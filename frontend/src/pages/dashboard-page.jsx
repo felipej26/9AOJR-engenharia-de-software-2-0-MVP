@@ -1,8 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { getMonthlyReport } from '../services/reports-service';
 import LoadingState from '../components/loading-state';
 import ErrorState from '../components/error-state';
-import { parseApiError } from '../utils/parse-api-error';
+import { useAsyncResource } from '../hooks/use-async-resource';
+import { formatMoney } from '../utils/format-money';
+import {
+  getTransactionTypeKeyword,
+  TRANSACTION_TYPE,
+} from '../constants/transaction-types';
 
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -16,22 +21,10 @@ function now() {
 
 export default function DashboardPage() {
   const [period, setPeriod] = useState(now());
-  const [report, setReport] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const load = () => {
-    setLoading(true);
-    setError(null);
-    getMonthlyReport(period.month, period.year)
-      .then((data) => setReport(data))
-      .catch((err) => setError(parseApiError(err).message))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    load();
-  }, [period.month, period.year]);
+  const { data: report, loading, error, reload: load } = useAsyncResource(
+    () => getMonthlyReport(period.month, period.year),
+    [period.month, period.year],
+  );
 
   const handleMonthChange = (e) => {
     const v = e.target.value;
@@ -101,8 +94,8 @@ export default function DashboardPage() {
             {byCategory.map((c) => (
               <li key={c.categoryId}>
                 <span>{c.categoryName}</span>
-                <span className={c.type === 'despesa' ? 'negative' : 'positive'}>
-                  {formatMoney(c.total)} ({c.type === 'receita' ? 'receita' : 'despesa'})
+                <span className={c.type === TRANSACTION_TYPE.DESPESA ? 'negative' : 'positive'}>
+                  {formatMoney(c.total)} ({getTransactionTypeKeyword(c.type)})
                 </span>
               </li>
             ))}
@@ -128,11 +121,4 @@ export default function DashboardPage() {
       )}
     </div>
   );
-}
-
-function formatMoney(value) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(Number(value));
 }

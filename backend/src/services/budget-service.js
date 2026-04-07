@@ -1,21 +1,18 @@
 const budgetRepository = require('../repositories/budget-repository');
 const categoryRepository = require('../repositories/category-repository');
 const transactionRepository = require('../repositories/transaction-repository');
+const { HttpError } = require('../errors/http-error');
 
 async function create(userId, data) {
   const now = new Date();
   const budgetMonth = new Date(data.year, data.month - 1, 1);
   if (budgetMonth < new Date(now.getFullYear(), now.getMonth(), 1)) {
-    const err = new Error('Orçamento só pode ser criado para o mês atual ou meses futuros');
-    err.statusCode = 400;
-    throw err;
+    throw new HttpError(400, 'Orçamento só pode ser criado para o mês atual ou meses futuros');
   }
 
   const category = await categoryRepository.findById(userId, data.categoryId);
   if (!category) {
-    const err = new Error('Categoria não encontrada');
-    err.statusCode = 404;
-    throw err;
+    throw new HttpError(404, 'Categoria não encontrada');
   }
 
   const budget = await budgetRepository.create(userId, {

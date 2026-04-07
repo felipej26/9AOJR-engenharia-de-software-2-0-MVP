@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
 require('dotenv').config();
+const prisma = require('../src/lib/prisma');
 
 const MOCK_USER_ID = process.env.MOCK_USER_ID || '00000000-0000-0000-0000-000000000001';
 
@@ -15,7 +15,6 @@ const categories = [
 ];
 
 async function main() {
-  const prisma = new PrismaClient();
   const user = await prisma.user.upsert({
     where: { id: MOCK_USER_ID },
     update: {},
@@ -46,7 +45,7 @@ async function main() {
   }
   const count = await prisma.category.count({ where: { userId: user.id } });
   console.log(`Categorias no total: ${count}`);
-  await prisma.$disconnect();
+  await prisma.disconnectPrisma();
 }
 
 main().catch((e) => {

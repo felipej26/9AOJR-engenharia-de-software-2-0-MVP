@@ -1,18 +1,15 @@
 const transactionRepository = require('../repositories/transaction-repository');
 const categoryRepository = require('../repositories/category-repository');
 const budgetRepository = require('../repositories/budget-repository');
+const { HttpError } = require('../errors/http-error');
 
 async function create(userId, data) {
   const category = await categoryRepository.findById(userId, data.categoryId);
   if (!category) {
-    const err = new Error('Categoria não encontrada');
-    err.statusCode = 404;
-    throw err;
+    throw new HttpError(404, 'Categoria não encontrada');
   }
   if (category.type !== data.type) {
-    const err = new Error('Tipo da transação não confere com o tipo da categoria');
-    err.statusCode = 400;
-    throw err;
+    throw new HttpError(400, 'Tipo da transação não confere com o tipo da categoria');
   }
 
   const transaction = await transactionRepository.create(userId, {

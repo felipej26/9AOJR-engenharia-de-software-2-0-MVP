@@ -6,6 +6,9 @@ import { parseApiError } from '../utils/parse-api-error';
 import LoadingState from '../components/loading-state';
 import ErrorState from '../components/error-state';
 import EmptyState from '../components/empty-state';
+import { formatMoney } from '../utils/format-money';
+import { parseAmountInput } from '../utils/parse-amount-input';
+import { TRANSACTION_TYPE } from '../constants/transaction-types';
 
 const now = new Date();
 const currentMonth = now.getMonth() + 1;
@@ -31,7 +34,7 @@ export default function BudgetsPage() {
     Promise.all([getBudgets(), getCategories()])
       .then(([budgets, cats]) => {
         setList(Array.isArray(budgets) ? budgets : []);
-        setCategories(Array.isArray(cats) ? cats.filter((c) => c.type === 'despesa') : []);
+        setCategories(Array.isArray(cats) ? cats.filter((c) => c.type === TRANSACTION_TYPE.DESPESA) : []);
       })
       .catch((err) => setError(parseApiError(err).message))
       .finally(() => setLoading(false));
@@ -41,7 +44,7 @@ export default function BudgetsPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const amount = parseFloat(form.limit_amount, 10);
+    const amount = parseAmountInput(form.limit_amount);
     if (!form.categoryId) {
       addToast({ type: 'error', message: 'Selecione uma categoria.' });
       return;
@@ -160,11 +163,4 @@ export default function BudgetsPage() {
       </section>
     </div>
   );
-}
-
-function formatMoney(value) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(Number(value));
 }

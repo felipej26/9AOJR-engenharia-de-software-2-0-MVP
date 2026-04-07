@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getTransactions } from '../services/transactions-service';
 import { createTransaction } from '../services/transactions-service';
 import { getCategories } from '../services/categories-service';
@@ -7,11 +7,14 @@ import { parseApiError } from '../utils/parse-api-error';
 import LoadingState from '../components/loading-state';
 import ErrorState from '../components/error-state';
 import EmptyState from '../components/empty-state';
-
-const TYPES = [
-  { value: 'receita', label: 'Receita' },
-  { value: 'despesa', label: 'Despesa' },
-];
+import { formatMoney } from '../utils/format-money';
+import { parseAmountInput } from '../utils/parse-amount-input';
+import {
+  DEFAULT_TRANSACTION_TYPE,
+  getTransactionTypeLabel,
+  TRANSACTION_TYPE,
+  TRANSACTION_TYPE_OPTIONS,
+} from '../constants/transaction-types';
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -26,7 +29,7 @@ export default function TransactionsPage() {
   const [filterYear, setFilterYear] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
-    type: 'despesa',
+    type: DEFAULT_TRANSACTION_TYPE,
     amount: '',
     date: todayStr(),
     description: '',
@@ -34,7 +37,7 @@ export default function TransactionsPage() {
   });
   const { addToast } = useToast();
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
     const params = {};
@@ -50,15 +53,15 @@ export default function TransactionsPage() {
       })
       .catch((err) => setError(parseApiError(err).message))
       .finally(() => setLoading(false));
-  };
+  }, [filterMonth, filterYear]);
 
   useEffect(() => {
     load();
-  }, [filterMonth, filterYear]);
+  }, [load]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const amount = parseFloat(form.amount, 10);
+    const amount = parseAmountInput(form.amount);
     if (!form.categoryId) {
       addToast({ type: 'error', message: 'Selecione uma categoria.' });
       return;
@@ -79,7 +82,7 @@ export default function TransactionsPage() {
       description: form.description || undefined,
       categoryId: form.categoryId,
     })
-      .then(({ transaction, budgetExceeded }) => {
+      .then(({ budgetExceeded }) => {
         addToast({ type: 'success', message: 'Transação criada com sucesso.' });
         if (budgetExceeded) {
           addToast({
@@ -115,7 +118,7 @@ export default function TransactionsPage() {
               value={form.type}
               onChange={(e) => setForm((f) => ({ ...f, type: e.target.value, categoryId: '' }))}
             >
-              {TYPES.map((t) => (
+              {TRANSACTION_TYPE_OPTIONS.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
@@ -217,8 +220,8 @@ export default function TransactionsPage() {
                     <td>{t.date}</td>
                     <td>{t.description || '—'}</td>
                     <td>{t.category?.name ?? t.categoryId}</td>
-                    <td>{t.type === 'receita' ? 'Receita' : 'Despesa'}</td>
-                    <td className={t.type === 'despesa' ? 'negative' : 'positive'}>
+                    <td>{getTransactionTypeLabel(t.type)}</td>
+                    <td className={t.type === TRANSACTION_TYPE.DESPESA ? 'negative' : 'positive'}>
                       {formatMoney(t.value)}
                     </td>
                   </tr>
@@ -230,11 +233,4 @@ export default function TransactionsPage() {
       </section>
     </div>
   );
-}
-
-function formatMoney(value) {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(Number(value));
 }

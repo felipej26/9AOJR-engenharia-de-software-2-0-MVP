@@ -35,6 +35,14 @@ cd backend && npm install && npm run setup && npm run dev
 
 A API estará em **http://localhost:3001**.
 
+O job diário de **recorrências** não roda mais dentro da API. Em outro terminal (ou outro container), suba o worker:
+
+```bash
+cd backend && npm run start:worker
+```
+
+Vários workers podem estar ativos: só um executa o job por vez graças a um **lock consultivo no PostgreSQL** (`pg_try_advisory_lock`). A API continua independente e não agenda cron.
+
 ## Estrutura do projeto
 
 ```
@@ -51,7 +59,10 @@ backend/
 │   ├── middlewares/     # auth mock, error-handler, validate (Zod)
 │   ├── utils/           # validators (Zod schemas)
 │   ├── app.js
-│   └── server.js        # Express + node-cron (recorrências às 00:05)
+│   ├── server.js        # Apenas API HTTP (Express)
+│   ├── cron-worker.js   # Processo separado: cron de recorrências
+│   └── jobs/
+│       └── recurrence-cron.js  # Agenda + lock Postgres (evita duplicar entre instâncias)
 ├── scripts/
 │   └── init-db.js       # prisma db push + seed
 ├── .env.example
@@ -78,6 +89,8 @@ Todas as rotas usam **usuário mock fixo** (sem login; `req.user` definido pelo 
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/financial_control?schema=public"
 PORT=3001
 MOCK_USER_ID=00000000-0000-0000-0000-000000000001
+# Opcional — apenas no worker de cron (padrão: 5 0 * * * = todo dia 00:05)
+# RECURRENCE_CRON="5 0 * * *"
 ```
 
 ## Scripts no `backend/`
@@ -85,7 +98,8 @@ MOCK_USER_ID=00000000-0000-0000-0000-000000000001
 | Script | Uso |
 |--------|-----|
 | `npm run dev` | Sobe a API com nodemon |
-| `npm run start` | Sobe a API (produção) |
+| `npm run start` | Sobe apenas a API HTTP (sem cron) |
+| `npm run start:worker` | Sobe o processo do cron de recorrências (separado da API) |
 | `npm run setup` | Cria tabelas (`prisma db push`) e executa seed |
 | `npm run db:migrate` | Migrations (quando usar migrate em vez de push) |
 | `npm run db:seed` | Apenas seed |
@@ -99,7 +113,7 @@ MOCK_USER_ID=00000000-0000-0000-0000-000000000001
 - **Verificação de orçamento**: ao criar despesa, a resposta pode incluir indicação de orçamento ultrapassado para aquela categoria no mês.
 - **Exclusão lógica**: transações usam `deleted_at`.
 - **Isolamento por usuário**: todas as operações filtradas por `userId` (mock).
-- **Scheduler**: job diário (00:05) para gerar transações a partir de recorrências mensais (modelo Recurrence presente; endpoints de recorrência não exigidos no MVP).
+- **Scheduler**: job diário (padrão 00:05) no processo `start:worker` para gerar transações a partir de recorrências mensais; lock no Postgres evita duplicação entre instâncias (modelo Recurrence presente; endpoints de recorrência não exigidos no MVP).
 
 ## Exemplo de uso (curl)
 

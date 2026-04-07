@@ -4,5 +4,5 @@ export async function getMonthlyReport(month, year) {
   const { data } = await apiClient.get('/reports/monthly', {
     params: { month, year },
   });
-  return data?.data ?? data ?? null;
+  return data ?? null;
 }
