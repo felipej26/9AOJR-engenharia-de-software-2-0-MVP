@@ -121,5 +121,3 @@ function authMock(req, res, next) {
 3. **Separar worker de cron** do processo HTTP ou usar fila/lock — evita duplicação de job e clarifica **SRP**.
 4. **Extrair DRY no frontend** (`formatMoney`, constantes de tipo, opcionalmente hook `useApiResource`).
 5. **Testes nos serviços críticos** (transação, orçamento, relatório) após introduzir injeção ou mocks de repositório.
-
-Se quiser, no modo Agent posso transformar isso em um checklist acionável no repositório (issues ou comentários por arquivo); em Ask mode a análise fica neste nível de diagnóstico.
